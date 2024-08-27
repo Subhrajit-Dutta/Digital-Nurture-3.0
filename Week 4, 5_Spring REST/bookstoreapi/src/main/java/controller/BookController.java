@@ -1,78 +1,70 @@
 package controller;
 
 import model.Book;
+import repository.BookRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
-
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import java.util.Optional;
 
 @RestController
-@RequestMapping(value = "/books", produces = { "application/json", "application/xml" })
+@RequestMapping("/books")
 public class BookController {
 
-    private List<Book> bookList = new ArrayList<>();
+    @Autowired
+    private BookRepository bookRepository;
 
-    @GetMapping
-    public ResponseEntity<List<Book>> getAllBooks() {
-        return new ResponseEntity<>(bookList, HttpStatus.OK);
+    @GetMapping(produces = { "application/json", "application/xml" })
+    public List<Book> getAllBooks() {
+        return bookRepository.findAll();
     }
-    @GetMapping("/{id}")
-    public ResponseEntity<EntityModel<Book>> getBookById(@PathVariable Long id) {
-        for (Book book : bookList) {
-            if (book.getId().equals(id)) {
-                EntityModel<Book> model = EntityModel.of(book);
-                model.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookController.class).getAllBooks()).withRel("all-books"));
-                return new ResponseEntity<>(model, HttpStatus.OK);
-            }
+
+    @GetMapping(value = "/{id}", produces = { "application/json", "application/xml" })
+    public ResponseEntity<Book> getBookById(@PathVariable Long id) {
+        Optional<Book> book = bookRepository.findById(id);
+
+        if (book.isPresent()) {
+            return ResponseEntity.ok(book.get());
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
-    @GetMapping("/search")
-    public ResponseEntity<List<Book>> searchBooks(
-            @RequestParam(required = false) String title,
-            @RequestParam(required = false) String author) {
 
-        List<Book> result = new ArrayList<>();
-        for (Book book : bookList) {
-            boolean matchesTitle = (title == null || book.getTitle().equalsIgnoreCase(title));
-            boolean matchesAuthor = (author == null || book.getAuthor().equalsIgnoreCase(author));
-            if (matchesTitle && matchesAuthor) {
-                result.add(book);
-            }
+    @PostMapping(consumes = { "application/json", "application/xml" }, produces = { "application/json", "application/xml" })
+    public ResponseEntity<Book> createBook(@RequestBody Book book) {
+        Book savedBook = bookRepository.save(book);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedBook);
+    }
+
+    @PutMapping(value = "/{id}", consumes = { "application/json", "application/xml" }, produces = { "application/json", "application/xml" })
+    public ResponseEntity<Book> updateBook(@PathVariable Long id, @RequestBody Book bookDetails) {
+        Optional<Book> book = bookRepository.findById(id);
+
+        if (book.isPresent()) {
+            Book updatedBook = book.get();
+            updatedBook.setTitle(bookDetails.getTitle());
+            updatedBook.setAuthor(bookDetails.getAuthor());
+            updatedBook.setPrice(bookDetails.getPrice());
+            updatedBook.setIsbn(bookDetails.getIsbn());
+            bookRepository.save(updatedBook);
+            return ResponseEntity.ok(updatedBook);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        return new ResponseEntity<>(result, HttpStatus.OK);
-    }
-
-    @PostMapping
-    public ResponseEntity<Book> addBook(@RequestBody Book book) {
-        bookList.add(book);
-        return new ResponseEntity<>(book, HttpStatus.CREATED);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Book> updateBook(@PathVariable Long id, @RequestBody Book updatedBook) {
-        for (Book book : bookList) {
-            if (book.getId().equals(id)) {
-                book.setTitle(updatedBook.getTitle());
-                book.setAuthor(updatedBook.getAuthor());
-                book.setPrice(updatedBook.getPrice());
-                book.setIsbn(updatedBook.getIsbn());
-                return new ResponseEntity<>(book, HttpStatus.OK);
-            }
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
-        bookList.removeIf(book -> book.getId().equals(id));
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        Optional<Book> book = bookRepository.findById(id);
+
+        if (book.isPresent()) {
+            bookRepository.delete(book.get());
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 }

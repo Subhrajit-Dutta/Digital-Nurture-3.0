@@ -1,19 +1,26 @@
 package model;
 
 import lombok.AllArgsConstructor;
+
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.Version;
+
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class Book {
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @NotNull(message = "Title cannot be null")
@@ -86,5 +93,10 @@ public class Book {
 		// TODO Auto-generated constructor stub
 	}
 
+	public Book(long l, String string, String string2, double d, String string3) {
+		// TODO Auto-generated constructor stub
+	}
+
+	
 	
 }
